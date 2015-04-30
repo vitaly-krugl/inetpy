@@ -1,3 +1,5 @@
+"""TCP/IP forwarding/echo service for testing."""
+
 import errno
 import multiprocessing
 import socket
@@ -8,7 +10,7 @@ import threading
 
 
 class ForwardServer(object):
-    """ Implement a TCP/IP forwarding service for testing. Listens for
+    """ Implement a TCP/IP forwarding/echo service for testing. Listens for
     an incoming TCP/IP connection, accepts it, then connects to the given
     remote address and forwards data back and forth between the two
     endpoints.
