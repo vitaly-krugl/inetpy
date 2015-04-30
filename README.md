@@ -25,3 +25,23 @@ with ForwardServer(("localhost", 5672)) as fwd:
 # Let's see what happens in pika with a disconnected server
 channel = conn.channel()
 ```
+
+## Echo server example
+```
+import time
+import threading
+
+from forward_server import ForwardServer
+
+def talk_to_echo_server(port):
+    pass
+
+with ForwardServer(None) as fwd:
+    worker = threading.Thread(target=talk_to_echo_server,
+                              args=[fwd.listening_port])
+    worker.start()
+    time.sleep(5)
+
+worker.join()
+
+```
