@@ -10,6 +10,8 @@ Forward/Echo Server in Python for testing
 ```
 import pika
 
+import ForwardServer
+
 with ForwardServer(("localhost", 5672)) as fwd:
     params = pika.ConnectionParameters(host="localhost",
                                        port=fwd.listening_port)
