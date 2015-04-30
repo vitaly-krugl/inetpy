@@ -17,7 +17,36 @@ class ForwardServer(object):
 
     This is similar to the subset of `netcat` functionality, but without
     dependency on any specific flavor of netcat
+
+    Connection forwarding example; forward local connection to default
+      rabbitmq addr, connect to rabbit via forwarder, then disconnect
+      forwarder, then attempt another pika operation to see what happens
+
+        with ForwardServer(("localhost", 5672)) as fwd:
+            params = pika.ConnectionParameters(host="localhost",
+                                               port=fwd.listening_port)
+            conn = pika.BlockingConnection(params)
+
+        # Once outside the context, the forwarder is disconnected
+
+        # Let's see what happens in pika with a disconnected server
+        channel = conn.channel()
+
+    Echo server example
+        def talk_to_echo_server(port):
+            pass
+
+        with ForwardServer(None) as fwd:
+            worker = threading.Thread(target=talk_to_echo_server,
+                                      args=[fwd.listening_port])
+            worker.start()
+            time.sleep(5)
+
+        worker.join()
+
     """
+
+
     def __init__(self, remote_addr):
         """
         :param tuple remote_addr: pair (host-or-ip-addr, port-number). Pass
