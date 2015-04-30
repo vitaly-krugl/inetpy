@@ -32,6 +32,9 @@ class ForwardServer(object):
     def start(self):
         """ Starts the server
 
+        Once `start()` returns, our `listening_port` attribute getter
+        becomes meaningful
+
         :returns: self
         """
         server = ThreadedTCPServer(self._remote_addr)
@@ -50,7 +53,7 @@ class ForwardServer(object):
         """ Context manager entry. Starts the forwarding server
 
         Once inside the context, our `listening_port` attribute getter
-        becomes defined
+        becomes meaningful
 
         :returns: self
         """
