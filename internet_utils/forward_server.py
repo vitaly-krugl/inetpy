@@ -8,6 +8,9 @@ import sys
 import threading
 
 
+from internet_utils.socket_pair import socket_pair
+
+
 
 class ForwardServer(object):
     """ Implement a TCP/IP forwarding/echo service for testing. Listens for
@@ -23,8 +26,9 @@ class ForwardServer(object):
       forwarder, then attempt another pika operation to see what happens
 
         with ForwardServer(("localhost", 5672)) as fwd:
-            params = pika.ConnectionParameters(host="localhost",
-                                               port=fwd.listening_port)
+            params = pika.ConnectionParameters(
+                host="localhost",
+                port=fwd.server_address[1])
             conn = pika.BlockingConnection(params)
 
         # Once outside the context, the forwarder is disconnected
@@ -38,7 +42,7 @@ class ForwardServer(object):
 
         with ForwardServer(None) as fwd:
             worker = threading.Thread(target=talk_to_echo_server,
-                                      args=[fwd.listening_port])
+                                      args=[fwd.server_address[1]])
             worker.start()
             time.sleep(5)
 
@@ -47,42 +51,73 @@ class ForwardServer(object):
     """
 
 
-    def __init__(self, remote_addr):
+    def __init__(self,
+                 remote_addr,
+                 remote_addr_family=socket.AF_INET,
+                 remote_socket_type=socket.SOCK_STREAM,
+                 server_addr=("127.0.0.1", 0),
+                 server_addr_family=socket.AF_INET,
+                 server_socket_type=socket.SOCK_STREAM):
         """
-        :param tuple remote_addr: pair (host-or-ip-addr, port-number). Pass
-          None to have ForwardServer behave as echo server
+        :param tuple remote_addr: remote server's IP address, whose structure
+          depends on remote_addr_family; pair (host-or-ip-addr, port-number).
+          Pass None to have ForwardServer behave as echo server.
+        :param remote_addr_family: socket.AF_INET (the default), socket.AF_INET6
+          or socket.AF_UNIX.
+        :param remote_socket_type: only socket.SOCK_STREAM is supported at this
+          time
+        :param server_addr: optional address for binding this server's listening
+          socket; the format depends on server_addr_family; defaults to
+          ("127.0.0.1", 0)
+        :param server_addr_family: Address family for this server's listening
+          socket; socket.AF_INET (the default), socket.AF_INET6 or
+          socket.AF_UNIX; defaults to socket.AF_INET
+        :param server_socket_type: only socket.SOCK_STREAM is supported at this
+          time
         """
         self._remote_addr = remote_addr
-        self._listening_port = None
+        self._remote_addr_family = remote_addr_family
+        assert remote_socket_type == socket.SOCK_STREAM, remote_socket_type
+        self._remote_socket_type = remote_socket_type
+
+
+        assert server_addr is not None
+        self._server_addr = server_addr
+
+        assert server_addr_family is not None
+        self._server_addr_family = server_addr_family
+
+        assert server_socket_type == socket.SOCK_STREAM, server_socket_type
+        self._server_socket_type = server_socket_type
 
         self._subproc = None
 
 
-    def start(self):
-        """ Starts the server
+    @property
+    def server_address_family(self):
+        """Property: Get listening socket's address family
 
-        Once `start()` returns, our `listening_port` attribute getter
-        becomes meaningful
-
-        :returns: self
+        NOTE: undefined before server starts and after it shuts down
         """
-        server = ThreadedTCPServer(self._remote_addr)
-        self._listening_port = server.server_address[1]
+        assert self._server_addr_family is not None, "Not in context"
 
-        self._subproc = multiprocessing.Process(target=_run_server,
-                                                args=(server,),
-                                                kwargs={})
-        self._subproc.daemon = True
-        self._subproc.start()
+        return self._server_addr_family
 
-        return self
+
+    @property
+    def server_address(self):
+        """ Property: Get listening socket's address; the returned value
+        depends on the listening socket's address family
+
+        NOTE: undefined before server starts and after it shuts down
+        """
+        assert self._server_addr is not None, "Not in context"
+
+        return self._server_addr
 
 
     def __enter__(self):
         """ Context manager entry. Starts the forwarding server
-
-        Once inside the context, our `listening_port` attribute getter
-        becomes meaningful
 
         :returns: self
         """
@@ -92,44 +127,90 @@ class ForwardServer(object):
     def __exit__(self, *args):
         """ Context manager exit; stops the forwarding server
         """
+        self.stop()
+
+
+    def start(self):
+        """ Start the server
+
+        NOTE: The context manager is the recommended way to use
+        ForwardServer. start()/stop() are alternatives to the context manager
+        use case and are mutually exclusive with it.
+
+        :returns: self
+        """
+
+        server_addr = self._server_addr
+        server_addr_family = self._server_addr_family
+        server_socket_type = self._server_socket_type
+
+        # NOTE: We define _ThreadedTCPServer class as a closure in order to
+        # override some of its class members dynamically
+        class _ThreadedTCPServer(SocketServer.ThreadingMixIn,
+                                 SocketServer.TCPServer,
+                                 object):
+
+            # Override TCPServer's class members
+            address_family = server_addr_family
+            socket_type = server_socket_type
+            allow_reuse_address = True
+
+
+            def __init__(self,
+                         remote_addr,
+                         remote_addr_family,
+                         remote_socket_type):
+                self.remote_addr = remote_addr
+                self.remote_addr_family = remote_addr_family
+                self.remote_socket_type = remote_socket_type
+
+                super(_ThreadedTCPServer, self).__init__(
+                    server_addr,
+                    _TCPHandler,
+                    bind_and_activate=True)
+
+
+        server = _ThreadedTCPServer(self._remote_addr,
+                                    self._remote_addr_family,
+                                    self._remote_socket_type)
+
+        self._server_addr_family = server.socket.family
+        self._server_addr = server.server_address
+
+        self._subproc = multiprocessing.Process(target=_run_server,
+                                                args=(server,))
+        self._subproc.daemon = True
+        self._subproc.start()
+
+        return self
+
+
+    def stop(self):
+        """Stop the server
+
+        NOTE: The context manager is the recommended way to use
+        ForwardServer. start()/stop() are alternatives to the context manager
+        use case and are mutually exclusive with it.
+        """
         self._subproc.terminate()
         self._subproc.join(timeout=10)
         self._subproc = None
-
-
-    @property
-    def listening_port(self):
-        """ Property: Get listening port
-        """
-        assert self._listening_port is not None, "Not in context"
-
-        return self._listening_port
 
 
 
 def _run_server(server):
     """ Run the server
 
-    :param ThreadedTCPServer server:
+    :param _ThreadedTCPServer server:
     """
     server.serve_forever()
 
 
 
-class ThreadedTCPServer(SocketServer.ThreadingMixIn,
-                        SocketServer.TCPServer,
-                        object):
-    allow_reuse_address = True
-
-
-    def __init__(self, remote_addr):
-        self.remote_addr = remote_addr
-
-        super(ThreadedTCPServer, self).__init__(("127.0.0.1", 0),
-                                                TCPHandler)
-
-
-class TCPHandler(SocketServer.StreamRequestHandler):
+class _TCPHandler(SocketServer.StreamRequestHandler):
+    """TCP/IP session handler instantiated by TCPServer upon incoming
+    connection. Implements forwarding/echo of the incoming connection.
+    """
 
     _SOCK_RX_BUF_SIZE = 16 * 1024
 
@@ -170,10 +251,14 @@ class TCPHandler(SocketServer.StreamRequestHandler):
         local_sock = self.connection
 
         if self.server.remote_addr is not None:
-            remote_dest_sock = remote_src_sock = socket.socket()
+            # Forwarding set-up
+            remote_dest_sock = remote_src_sock = socket.socket(
+                family=server.remote_addr_family,
+                type=server.remote_socket_type,
+                proto=socket.IPPROTO_IP)
             remote_dest_sock.connect(self.server.remote_addr)
         else:
-            # Echo mode
+            # Echo set-up
             remote_dest_sock, remote_src_sock = socket_pair()
 
         try:
@@ -202,47 +287,6 @@ class TCPHandler(SocketServer.StreamRequestHandler):
                 if remote_src_sock is not remote_dest_sock:
                     remote_src_sock.close()
 
-
-
-def socket_pair(family=None, sock_type=socket.SOCK_STREAM,
-                proto=socket.IPPROTO_IP):
-    """ socket.socketpair abstraction with support for Windows
-    """
-    if family is None:
-        try:
-            family = socket.AF_UNIX
-        except NameError:
-            family = socket.AF_INET
-
-    try:
-        sock1, sock2 = socket.socketpair(family, sock_type, proto)
-    except NameError:
-        # Work around lack of socket.socketpair()
-
-        lsock = socket(family, sock_type, proto)
-        lsock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-
-        lsock.bind(("localhost", 0))
-        ephport = lsock.getsockname()[1]
-        lsock.listen(1)
-
-        sock1 = socket(family, sock_type, proto)
-
-        # Use thread to connect in background, while foreground issues the
-        # blocking accept() call
-        conn_thread = threading.Thread(
-            target=sock1.connect,
-            args=(('localhost', lsock.getsockname()[1]),))
-        conn_thread.setDaemon(1)
-        conn_thread.start()
-
-        try:
-            sock2 = lsock.accept()[0]
-        finally:
-            lsock.close()
-            conn_thread.join(timeout=10)
-
-    return (sock1, sock2)
 
 
 
@@ -288,7 +332,7 @@ def echo(port=0):
 
 
 
-def _safe_shutdown_socket(sock, how):
+def _safe_shutdown_socket(sock, how=socket.SHUT_RDWR):
     """ Shutdown a socket, suppressing ENOTCONN
     """
     try:

@@ -16,7 +16,7 @@ from forward_server import ForwardServer
 
 with ForwardServer(("localhost", 5672)) as fwd:
     params = pika.ConnectionParameters(host="localhost",
-                                       port=fwd.listening_port)
+                                       port=fwd.server_address[1])
     conn = pika.BlockingConnection(params)
     print >> sys.stderr, "Connected!"
 
@@ -38,7 +38,7 @@ def talk_to_echo_server(port):
 
 with ForwardServer(None) as fwd:
     worker = threading.Thread(target=talk_to_echo_server,
-                              args=[fwd.listening_port])
+                              args=[fwd.server_address[1]])
     worker.start()
     time.sleep(5)
 
