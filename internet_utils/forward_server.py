@@ -253,8 +253,8 @@ class _TCPHandler(SocketServer.StreamRequestHandler):
         if self.server.remote_addr is not None:
             # Forwarding set-up
             remote_dest_sock = remote_src_sock = socket.socket(
-                family=server.remote_addr_family,
-                type=server.remote_socket_type,
+                family=self.server.remote_addr_family,
+                type=self.server.remote_socket_type,
                 proto=socket.IPPROTO_IP)
             remote_dest_sock.connect(self.server.remote_addr)
         else:
