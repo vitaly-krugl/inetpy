@@ -9,7 +9,7 @@ import sys
 import threading
 
 
-from internet_utils.socket_pair import socket_pair
+from inetpy.socket_pair import socket_pair
 
 
 
@@ -38,14 +38,20 @@ class ForwardServer(object):
         channel = conn.channel()
 
     Echo server example
-        def talk_to_echo_server(port):
-            pass
+        def produce(sock):
+            sock.sendall("12345")
+            sock.shutdown(socket.SHUT_WR)
 
         with ForwardServer(None) as fwd:
-            worker = threading.Thread(target=talk_to_echo_server,
-                                      args=[fwd.server_address[1]])
+            sock = socket.socket()
+            sock.connect(fwd.server_address)
+
+            worker = threading.Thread(target=produce,
+                                      args=[sock])
             worker.start()
-            time.sleep(5)
+
+            data = sock.makefile().read()
+            assert data == "12345", data
 
         worker.join()
 
