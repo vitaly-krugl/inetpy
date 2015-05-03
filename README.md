@@ -55,6 +55,8 @@ worker.join()
 
 ## Socket Pair example
 
+socket.socketpair abstraction with support for Windows
+
 ```
 from inetpy.socket_pair import socket_pair
 
