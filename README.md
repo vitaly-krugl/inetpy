@@ -52,3 +52,19 @@ with ForwardServer(None) as fwd:
 
 worker.join()
 ```
+
+## Socket Pair example
+
+```
+from inetpy.socket_pair import socket_pair
+
+
+sock1, sock2 = socket_pair()
+
+# NOTE: we expect the small message to fit into a single packet
+
+sock1.sendall("abcd")
+assert sock2.recv(4) == "abcd"
+
+sock2.sendall("1234")
+assert sock1.recv(4) == "1234"

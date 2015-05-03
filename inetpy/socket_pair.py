@@ -12,6 +12,19 @@ def socket_pair(family=None, sock_type=socket.SOCK_STREAM,
       defaults to socket.AF_UNIX if available, with fallback to socket.AF_INET.
     :param sock_type: socket type; defaults to socket.SOCK_STREAM
     :param proto: protocol; defaults to socket.IPPROTO_IP
+
+    :returns: connected socket pair (sock1, sock2)
+
+    :example:
+        sock1, sock2 = socket_pair()
+
+        # NOTE: we expect the small message to fit into a single packet
+
+        sock1.sendall("abcd")
+        assert sock2.recv(4) == "abcd"
+
+        sock2.sendall("1234")
+        assert sock1.recv(4) == "1234"
     """
     if family is None:
         try:
