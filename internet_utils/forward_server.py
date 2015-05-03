@@ -1,5 +1,6 @@
 """TCP/IP forwarding/echo service for testing."""
 
+import array
 import errno
 import multiprocessing
 import socket
@@ -91,6 +92,12 @@ class ForwardServer(object):
         self._server_socket_type = server_socket_type
 
         self._subproc = None
+
+
+    @property
+    def running(self):
+        """Property: True if ForwardServer is active"""
+        return self._subproc is not None
 
 
     @property
@@ -217,7 +224,12 @@ class _TCPHandler(SocketServer.StreamRequestHandler):
     def handle(self):
         def forward(src_sock, dest_sock):
             try:
-                rx_buf = bytearray(b" " * self._SOCK_RX_BUF_SIZE)
+                # NOTE: python 2.6 doesn't support bytearray with recv_into, so
+                # we use array.array instead; this is only okay as long as the
+                # array instance isn't shared across threads. See
+                # http://bugs.python.org/issue7827 and
+                # groups.google.com/forum/#!topic/comp.lang.python/M6Pqr-KUjQw
+                rx_buf = array.array("B", [0] * self._SOCK_RX_BUF_SIZE)
 
                 while True:
                     try:
@@ -225,6 +237,9 @@ class _TCPHandler(SocketServer.StreamRequestHandler):
                     except socket.error as e:
                         if e.errno == errno.EINTR:
                             continue
+                        elif e.errno == errno.ECONNRESET:
+                            # Source peer forcibly closed connection
+                            break
                         else:
                             raise
 
@@ -236,7 +251,10 @@ class _TCPHandler(SocketServer.StreamRequestHandler):
                         dest_sock.sendall(buffer(rx_buf, 0, nbytes))
                     except socket.error as e:
                         if e.errno == errno.EPIPE:
-                            # Dest peer closed its end of the connection
+                            # Destination peer closed its end of the connection
+                            break
+                        elif e.errno == errno.ECONNRESET:
+                            # Destination peer forcibly closed connection
                             break
                         else:
                             raise

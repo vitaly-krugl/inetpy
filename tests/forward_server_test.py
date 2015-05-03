@@ -20,9 +20,11 @@ class ForwardServerTestCase(unittest.TestCase):
         available
         """
         with forward_server.ForwardServer(("localhost", 9999)) as fwd:
+            self.assertTrue(fwd.running)
             self.assertEqual(fwd.server_address_family, socket.AF_INET)
             self.assertIsInstance(fwd.server_address, tuple)
 
+        self.assertFalse(fwd.running)
         self.assertIsNone(fwd._subproc)
 
 
@@ -31,9 +33,11 @@ class ForwardServerTestCase(unittest.TestCase):
         available
         """
         with forward_server.ForwardServer(None) as fwd:
+            self.assertTrue(fwd.running)
             self.assertEqual(fwd.server_address_family, socket.AF_INET)
             self.assertIsInstance(fwd.server_address, tuple)
 
+        self.assertFalse(fwd.running)
         self.assertIsNone(fwd._subproc)
 
 
