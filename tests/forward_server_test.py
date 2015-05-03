@@ -7,7 +7,7 @@ import multiprocessing
 import socket
 import unittest
 
-from internet_utils import forward_server
+from inetpy import forward_server
 
 
 

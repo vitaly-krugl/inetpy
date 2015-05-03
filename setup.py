@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 
 
-name = "internet_utils"
+name = "inetpy"
 
 
 

@@ -3,7 +3,7 @@
 import socket
 import unittest
 
-from internet_utils.socket_pair import socket_pair
+from inetpy.socket_pair import socket_pair
 
 
 

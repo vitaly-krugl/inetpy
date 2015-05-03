@@ -1,4 +1,5 @@
-Forward/Echo Server in Python for testing
+Internet utilities in the Python programming language
+
 
 ## TCP/IP Connection forwarding example
 
@@ -12,7 +13,7 @@ import sys
 
 import pika
 
-from forward_server import ForwardServer
+from inetpy.forward_server import ForwardServer
 
 with ForwardServer(("localhost", 5672)) as fwd:
     params = pika.ConnectionParameters(host="localhost",
@@ -28,20 +29,26 @@ channel = conn.channel()
 
 ## Echo server example
 ```
-import time
+import socket
 import threading
+import time
 
-from forward_server import ForwardServer
+from inetpy.forward_server import ForwardServer
 
-def talk_to_echo_server(port):
-    pass
+def produce(sock):
+    sock.sendall("12345")
+    sock.shutdown(socket.SHUT_WR)
 
 with ForwardServer(None) as fwd:
-    worker = threading.Thread(target=talk_to_echo_server,
-                              args=[fwd.server_address[1]])
+    sock = socket.socket()
+    sock.connect(fwd.server_address)
+
+    worker = threading.Thread(target=produce,
+                              args=[sock])
     worker.start()
-    time.sleep(5)
+
+    data = sock.makefile().read()
+    assert data == "12345", data
 
 worker.join()
-
 ```
