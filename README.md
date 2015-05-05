@@ -1,4 +1,5 @@
 Internet utilities in the Python programming language
+=====================================================
 
 
 ## TCP/IP Connection forwarding example
@@ -59,7 +60,6 @@ socket.socketpair abstraction with support for Windows
 
 ```
 from inetpy.socket_pair import socket_pair
-
 
 sock1, sock2 = socket_pair()
 
