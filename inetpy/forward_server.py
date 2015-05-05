@@ -28,7 +28,7 @@ class ForwardServer(object):
 
         with ForwardServer(("localhost", 5672)) as fwd:
             params = pika.ConnectionParameters(
-                host="localhost",
+                host=fwd.server_address[0],
                 port=fwd.server_address[1])
             conn = pika.BlockingConnection(params)
 
