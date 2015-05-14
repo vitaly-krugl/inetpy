@@ -29,12 +29,12 @@ def socket_pair(family=None, sock_type=socket.SOCK_STREAM,
     if family is None:
         try:
             family = socket.AF_UNIX
-        except NameError:
+        except AttributeError:
             family = socket.AF_INET
 
     try:
         socket1, socket2 = socket.socketpair(family, sock_type, proto)
-    except NameError:
+    except AttributeError:
         # Probably running on Windows where socket.socketpair isn't supported
 
         # Work around lack of socket.socketpair()
