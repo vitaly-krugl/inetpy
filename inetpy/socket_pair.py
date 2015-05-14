@@ -27,13 +27,13 @@ def socket_pair(family=None, sock_type=socket.SOCK_STREAM,
         assert sock1.recv(4) == "1234"
     """
     if family is None:
-        if hasattr(socket, "AF_UNIX"):
-            family = socket.AF_UNIX
-        else:
+        family = getattr(socket, "AF_UNIX", None)
+        if family is None:
             family = socket.AF_INET
 
-    if hasattr(socket, "socketpair"):
-        socket1, socket2 = socket.socketpair(family, sock_type, proto)
+    socketpair = getattr(socket, "socketpair", None)
+    if socketpair is not None:
+        socket1, socket2 = socketpair(family, sock_type, proto)
     else:
         # Probably running on Windows where socket.socketpair isn't supported
 
