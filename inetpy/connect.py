@@ -19,38 +19,12 @@ def connect_tcp(host, port):
   :raises socket.gaierror: address resolution error
   :raises socket.error: socket connection error
   """
-  return connect(host,
-                 port,
-                 family=0,
-                 socktype=0,
-                 proto=socket.IPPROTO_TCP,
-                 flags=0)
-
-
-
-def connect(host, port, family=0, socktype=0, proto=0, flags=0):
-  """ Perform address resolution via `socket.getaddrinfo` and return socket
-  from the first successful conneciton attempt.
-
-  The arguments are passed to socket.getaddrinfo to refine address resolution.
-  See `socket.getaddrinfo` for details.
-
-  :param str host: domain name, a string representation of an IPv4/v6 address
-  :param port: port is a string service name such as 'http', a numeric port
-    number or 0.
-  :type port: str, int
-  :param int family: one of socket.AF_*; 0 (AF_UNSPEC) means the full range of
-    results is selected.
-  :param int socktype: typically sock.SOCK_STREAM or sock.DGRAM
-  :param int proto: socket.IPPROTO_*; e.g., socket.IPPROTO_TCP; defaults to 0,
-    which indicates that socket addresses with any protocol can be returned
-  :param int flags: one or serveral of the socket.AI_* constants; influences how
-    results are computed and returned
-
-  :raises socket.gaierror: address resolution error
-  :raises socket.error: socket connection error
-  """
-  infos = socket.getaddrinfo(host, port, family, socktype, proto, flags)
+  infos = socket.getaddrinfo(host,
+                             port,
+                             0, # family
+                             0, # socktype
+                             socket.IPPROTO_TCP,
+                             0) # flags
   return connect_from_addr_infos(infos)
 
 
