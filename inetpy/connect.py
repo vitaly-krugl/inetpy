@@ -39,7 +39,7 @@ def connect_from_addr_infos(infos):
   :returns: A successfully-connected socket; None if given an empty sequence
   :rtype: socket.socket or None
 
-  :socket.error:
+  :raises socket.error: socket connection error
   """
   if not infos:
     return None
