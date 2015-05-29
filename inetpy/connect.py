@@ -61,7 +61,7 @@ def connect_from_addr_infos(infos):
     # Attempt to connect
     try:
       sock.connect(address)
-    except socket.error as msg:
+    except socket.error:
       sock.close()
       sock = None
 
