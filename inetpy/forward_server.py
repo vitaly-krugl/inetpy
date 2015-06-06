@@ -210,6 +210,7 @@ class ForwardServer(object):
         """
         self._subproc.terminate()
         self._subproc.join(timeout=10)
+        assert not self._subproc.is_alive(), self._subproc
         self._subproc = None
 
 
