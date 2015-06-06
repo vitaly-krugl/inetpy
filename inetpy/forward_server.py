@@ -195,6 +195,9 @@ class ForwardServer(object):
         self._subproc.daemon = True
         self._subproc.start()
 
+        # Close local copy of TCPServer (subprocess has its own)
+        server.server_close()
+
         return self
 
 
