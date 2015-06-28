@@ -406,7 +406,7 @@ class _TCPHandler(SocketServer.StreamRequestHandler):
                             "".join(traceback.format_stack()))
                         raise
         except:
-            _trace("forward failed\n%s", "".join(traceback.format_exception()))
+            _trace("forward failed\n%s", "".join(traceback.format_exc()))
             raise
         finally:
             _trace("%s done forwarding from %s", datetime.utcnow(),
