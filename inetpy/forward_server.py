@@ -25,7 +25,7 @@ from inetpy.socket_pair import socket_pair
 
 def _trace(fmt, *args):
     """Format and output the text to stderr"""
-    print(fmt % args, file=sys.stderr)
+    print((fmt % args) + "\n", end="", file=sys.stderr)
 
 
 
@@ -349,8 +349,10 @@ class _TCPHandler(SocketServer.StreamRequestHandler):
 
     def _forward(self, src_sock, dest_sock):
         """Forward from src_sock to dest_sock"""
+        src_peername = src_sock.getpeername()
+
         _trace("%s forwarding from %s to %s", datetime.utcnow(),
-               src_sock.getpeername(), dest_sock.getpeername())
+               src_peername, dest_sock.getpeername())
         try:
             # NOTE: python 2.6 doesn't support bytearray with recv_into, so
             # we use array.array instead; this is only okay as long as the
@@ -368,19 +370,17 @@ class _TCPHandler(SocketServer.StreamRequestHandler):
                     elif e.errno == errno.ECONNRESET:
                         # Source peer forcibly closed connection
                         _trace("%s errno.ECONNRESET from %s",
-                               datetime.utcnow(), src_sock.getpeername())
+                               datetime.utcnow(), src_peername)
                         break
                     else:
                         _trace("%s Unexpected errno=%s from %s\n%s",
-                               datetime.utcnow(), e.errno,
-                               src_sock.getpeername(),
+                               datetime.utcnow(), e.errno, src_peername,
                                "".join(traceback.format_stack()))
                         raise
 
                 if not nbytes:
                     # Source input EOF
-                    _trace("%s EOF on %s", datetime.utcnow(),
-                           src_sock.getpeername())
+                    _trace("%s EOF on %s", datetime.utcnow(), src_peername)
                     break
 
                 try:
@@ -406,11 +406,11 @@ class _TCPHandler(SocketServer.StreamRequestHandler):
                             "".join(traceback.format_stack()))
                         raise
         except:
-            _trace("forward failed\n%s", "".join(traceback.format_stack()))
+            _trace("forward failed\n%s", "".join(traceback.format_exception()))
             raise
         finally:
             _trace("%s done forwarding from %s", datetime.utcnow(),
-                   src_sock.getpeername())
+                   src_peername)
             try:
                 # Let source peer know we're done receiving
                 _safe_shutdown_socket(src_sock, socket.SHUT_RD)
