@@ -3,6 +3,10 @@
 TODO multi-connection tests
 """
 
+# Supress pylint messages concerning missing class docstring
+# pylint: disable=C0111
+
+import errno
 import multiprocessing
 import socket
 import unittest
@@ -164,9 +168,32 @@ class ForwardServerTestCase(unittest.TestCase):
         self.assertFalse(fwd.running)
 
 
+    def test_echo_so_linger_zero_sec_resets_connection_on_termination(self):  # pylint: disable=C0103
+        """Test echo with SO_LINGER set to linger for 0 seconds resets
+        connection upon forwarder termination
+        """
+
+        with forward_server.ForwardServer(remote_addr=None,
+                                          local_linger_args=(1, 0)) as fwd:
+            self.assertTrue(fwd.running)
+
+            sock = socket.socket()
+            sock.connect(fwd.server_address)
+
+            # Test send/receive via echo server
+            # NOTE: we expect the small message to fit into a single packet
+            sock.sendall("abcd")
+            self.assertEqual(sock.recv(10), "abcd")
+
+        with self.assertRaises(socket.error) as exc_ctx:
+            sock.send("efg")
+
+        self.assertEqual(exc_ctx.exception.errno, errno.EPIPE)
+
+
     def test_basic_echo(self):
         """Basic echo test"""
-        with forward_server.ForwardServer(None) as fwd:
+        with forward_server.ForwardServer(remote_addr=None) as fwd:
             self.assertTrue(fwd.running)
 
             sock = socket.socket()
@@ -184,7 +211,7 @@ class ForwardServerTestCase(unittest.TestCase):
 
     def test_large_echo(self):
         """Echo large data block"""
-        with forward_server.ForwardServer(None) as fwd:
+        with forward_server.ForwardServer(remote_addr=None) as fwd:
             self.assertTrue(fwd.running)
 
             sock = socket.socket()
